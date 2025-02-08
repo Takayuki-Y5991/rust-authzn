@@ -89,8 +89,8 @@ impl ExpiresAt {
     Self(SystemTime::now() + duration)
   }
 
-  pub fn from_system_time(time: SystemTime) -> Self {
-    Self(time)
+  pub fn from_system_time(seconds: u64) -> Self {
+    Self::new(Duration::from_secs(seconds))
   }
 
   pub fn is_expired(&self) -> bool {
@@ -140,6 +140,10 @@ impl Scopes {
     let intersection: Vec<String> = self.0.iter().filter(|s| other.0.contains(s)).cloned().collect();
     Self(intersection)
   }
+
+  pub fn contains(&self, scope: &str) -> bool {
+    self.0.contains(&scope.to_string())
+  }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -175,21 +179,68 @@ mod tests {
   use super::*;
 
   #[test]
+  fn test_id_generation() {
+    let auth_id1 = AuthenticationId::new();
+    let auth_id2 = AuthenticationId::new();
+    assert_ne!(auth_id1, auth_id2, "Generated IDs should be unique");
+
+    let session_id1 = SessionId::new();
+    let session_id2 = SessionId::new();
+    assert_ne!(session_id1, session_id2, "Generated session IDs should be unique");
+  }
+
+  #[test]
+  fn test_user_id_validation() {
+    // 有効なケース
+    assert!(UserId::new("user123".to_string()).is_ok());
+    assert!(UserId::new("user_123-test".to_string()).is_ok());
+
+    // 無効なケース
+    assert!(UserId::new("".to_string()).is_err());
+    assert!(UserId::new("a".repeat(256)).is_err());
+    assert!(UserId::new("user@123".to_string()).is_err());
+    assert!(UserId::new("user 123".to_string()).is_err());
+  }
+
+  #[test]
   fn test_redirect_uri_validation() {
     // 有効なURLのテスト
     assert!(RedirectUri::new("https://example.com/callback".to_string()).is_ok());
     assert!(RedirectUri::new("http://localhost:3000/callback".to_string()).is_ok());
+    assert!(RedirectUri::new("https://sub.example.com/callback?param=value".to_string()).is_ok());
 
+    // 無効なURLのテスト
     assert!(RedirectUri::new("ftp://example.com".to_string()).is_err());
     assert!(RedirectUri::new("invalid-url".to_string()).is_err());
+    assert!(RedirectUri::new("".to_string()).is_err());
+    assert!(RedirectUri::new("https://".to_string()).is_err());
   }
 
   #[test]
-  fn test_scopes_validation() {
+  fn test_scopes() {
+    // 基本的な検証
     let valid_scopes = vec!["read".to_string(), "write".to_string()];
-    assert!(Scopes::new(valid_scopes).is_ok());
+    let scopes = Scopes::new(valid_scopes.clone()).unwrap();
+    assert_eq!(scopes.as_vec(), &valid_scopes);
 
-    let invalid_scopes = vec!["read space".to_string()];
-    assert!(Scopes::new(invalid_scopes).is_err());
+    // 空のスコープ
+    assert!(Scopes::new(vec![]).is_err());
+    assert!(Scopes::new(vec!["".to_string()]).is_err());
+
+    // contains_allのテスト
+    let full_scopes = Scopes::new(vec!["read".to_string(), "write".to_string(), "delete".to_string()]).unwrap();
+    let partial_scopes = Scopes::new(vec!["read".to_string(), "write".to_string()]).unwrap();
+    assert!(full_scopes.contains_all(&partial_scopes));
+    assert!(!partial_scopes.contains_all(&full_scopes));
+
+    // intersectのテスト
+    let scopes1 = Scopes::new(vec!["read".to_string(), "write".to_string()]).unwrap();
+    let scopes2 = Scopes::new(vec!["write".to_string(), "delete".to_string()]).unwrap();
+    let intersection = scopes1.intersect(&scopes2);
+    assert_eq!(intersection.as_vec(), &vec!["write".to_string()]);
+
+    // as_space_separated_stringのテスト
+    let scopes = Scopes::new(vec!["read".to_string(), "write".to_string()]).unwrap();
+    assert_eq!(scopes.as_space_separated_string(), "read write");
   }
 }
