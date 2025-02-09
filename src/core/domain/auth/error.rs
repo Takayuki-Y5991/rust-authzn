@@ -15,6 +15,9 @@ pub enum AuthError {
   #[error("Session expired")]
   SessionExpired,
 
+  #[error("Configuration error: {0}")]
+  ConfigurationError(String),
+
   #[error("Validation error: {0}")]
   ValidationError(String),
 }
