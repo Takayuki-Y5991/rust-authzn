@@ -164,8 +164,8 @@ impl Authentication {
       return Err(AuthError::InvalidState);
     }
 
-    let code_verifier = CodeVerifier::generate();
-    let code_challenge = CodeChallenge::from_verifier(&code_verifier);
+    let code_verifier = CodeVerifier::generate()?;
+    let code_challenge = CodeChallenge::from_verifier(&code_verifier)?;
 
     let session = AuthenticationSession::new(client_id, redirect_uri, scopes, code_verifier, code_challenge, None);
 
@@ -272,8 +272,8 @@ mod tests {
     use std::thread::sleep;
 
     // まずCodeVerifierを生成
-    let code_verifier = CodeVerifier::generate();
-    let code_challenge = CodeChallenge::from_verifier(&code_verifier);
+    let code_verifier = CodeVerifier::generate()?;
+    let code_challenge = CodeChallenge::from_verifier(&code_verifier)?;
 
     // そしてセッションを作成
     let session = AuthenticationSession::new(
