@@ -2,9 +2,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [ develop ]
+    branches: [develop]
   pull_request:
-    branches: [ develop ]
+    branches: [develop]
 
 env:
   CARGO_TERM_COLOR: always
@@ -49,8 +49,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-target-
 
-    #   - name: Check formatting
-    #     run: cargo fmt --all -- --check
+      #   - name: Check formatting
+      #     run: cargo fmt --all -- --check
 
       - name: Clippy
         run: cargo clippy -- -D warnings
@@ -96,3 +96,31 @@ jobs:
 
       - name: Build release
         run: cargo build --release --verbose
+
+  slack_notify:
+    name: Slack Notification
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Set Slack Message
+        id: slack_message
+        run: |
+          message="*Rust CI*\n"
+          if [[ "${{ needs.test.result }}" == "success" && "${{ needs.build.result }}" == "success" ]]; then
+            message+='Status: Success\n'
+          else
+            message+='Status: Failure\n'
+          fi
+          message+="Workflow: ${{ github.workflow }}\n"
+          message+="Repository: ${{ github.repository }}\n"
+          message+="Commit: ${{ github.sha }}\n"
+          message+="Branch: ${{ github.ref }}\n"
+          message+="Job Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "::set-output name=message::$message"
+
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_MESSAGE: ${{ steps.slack_message.outputs.message }}
