@@ -13,6 +13,11 @@ impl AuthenticationId {
     &self.0
   }
 }
+impl Default for AuthenticationId {
+  fn default() -> Self {
+    Self::new()
+  }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AuthorizationId(Uuid);
@@ -24,6 +29,11 @@ impl AuthorizationId {
     &self.0
   }
 }
+impl Default for AuthorizationId {
+  fn default() -> Self {
+    Self::new()
+  }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SessionId(Uuid);
@@ -33,6 +43,11 @@ impl SessionId {
   }
   pub fn value(&self) -> &Uuid {
     &self.0
+  }
+}
+impl Default for SessionId {
+  fn default() -> Self {
+    Self::new()
   }
 }
 
