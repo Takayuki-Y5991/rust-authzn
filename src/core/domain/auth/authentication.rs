@@ -49,8 +49,14 @@ impl State {
     &self.0
   }
 }
+impl Default for State {
+  fn default() -> Self {
+    Self::new()
+  }
+}
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct AuthenticationSession {
   auth_id: AuthenticationId,
   client_id: ClientId,
@@ -130,6 +136,7 @@ impl AuthenticationSession {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Authentication {
   id: AuthenticationId,
   state: AuthenticationState,
@@ -219,6 +226,11 @@ impl Authentication {
 
   pub fn session(&self) -> Option<&AuthenticationSession> {
     self.session.as_ref()
+  }
+}
+impl Default for Authentication {
+  fn default() -> Self {
+    Self::new()
   }
 }
 

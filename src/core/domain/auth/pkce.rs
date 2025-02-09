@@ -43,5 +43,5 @@ impl CodeChallenge {
 fn encode_to_string(bytes: &[u8]) -> String {
   let mut buffer = vec![0; Base64UrlUnpadded::encoded_len(bytes)];
   Base64UrlUnpadded::encode(bytes, &mut buffer).unwrap();
-  return String::from_utf8(buffer).unwrap();
+  String::from_utf8(buffer).unwrap()
 }
