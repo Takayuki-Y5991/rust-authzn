@@ -7,16 +7,16 @@ use super::error::AuthError;
 #[derive(Debug, Clone)]
 pub struct CodeVerifier(String);
 impl CodeVerifier {
-  pub fn generate() -> Self {
+  pub fn generate() -> Result<Self, AuthError> {
     let mut rng = OsRng;
     let mut bytes = [0u8; 32];
 
-    let _ = rng
+    rng
       .try_fill_bytes(&mut bytes)
-      .map_err(|e| AuthError::ValidationError(format!("Failed to generate random bytes: {}", e)));
+      .map_err(|e| AuthError::ValidationError(format!("Failed to generate random bytes: {}", e)))?;
 
     let value = encode_to_string(&bytes);
-    Self(value)
+    Ok(Self(value))
   }
 
   pub fn value(&self) -> &str {
@@ -28,12 +28,13 @@ impl CodeVerifier {
 pub struct CodeChallenge(String);
 
 impl CodeChallenge {
-  pub fn from_verifier(verifier: &CodeVerifier) -> Self {
+  pub fn from_verifier(verifier: &CodeVerifier) -> Result<Self, AuthError> {
     let mut hasher = Sha256::new();
     hasher.update(verifier.value().as_bytes());
     let result = hasher.finalize();
+
     let challenge = encode_to_string(&result);
-    Self(challenge)
+    Ok(Self(challenge))
   }
   pub fn value(&self) -> &str {
     &self.0
