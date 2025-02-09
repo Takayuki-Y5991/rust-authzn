@@ -25,7 +25,7 @@ impl TokenType {
     }
   }
 
-  pub fn from_str(s: &str) -> Result<Self, AuthError> {
+  pub fn parse_str(s: &str) -> Result<Self, AuthError> {
     match s.to_lowercase().as_str() {
       "bearer" => Ok(TokenType::Bearer),
       "mac" => Ok(TokenType::Mac),
@@ -92,7 +92,7 @@ impl Authorization {
     refresh_token: Option<String>,
     granted_scopes: Scopes,
   ) -> Result<Self, AuthError> {
-    let token_type = TokenType::from_str(&token_type)?;
+    let token_type = TokenType::parse_str(&token_type)?;
     let access_token = AccessToken::new(access_token, token_type, Duration::from_secs(expires_in))?;
 
     let now = SystemTime::now();
@@ -143,7 +143,7 @@ impl Authorization {
       return Err(AuthError::InvalidState);
     }
 
-    let token_type = TokenType::from_str(&token_type)?;
+    let token_type = TokenType::parse_str(&token_type)?;
     self.access_token = AccessToken::new(new_token, token_type, Duration::from_secs(expires_in))?;
 
     if let Some(refresh_token) = new_refresh_token {
@@ -246,10 +246,10 @@ mod tests {
 
   #[test]
   fn test_token_type_validation() {
-    assert!(TokenType::from_str("bearer").is_ok());
-    assert!(TokenType::from_str("Bearer").is_ok());
-    assert!(TokenType::from_str("BEARER").is_ok());
-    assert!(TokenType::from_str("invalid").is_err());
+    assert!(TokenType::parse_str("bearer").is_ok());
+    assert!(TokenType::parse_str("Bearer").is_ok());
+    assert!(TokenType::parse_str("BEARER").is_ok());
+    assert!(TokenType::parse_str("invalid").is_err());
   }
 
   #[test]
