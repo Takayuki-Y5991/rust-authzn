@@ -13,19 +13,21 @@ use crate::{
   port::outbound::oauth_provider::{OAuthProvider, ProviderConfig, RefreshTokenRequest, TokenRequest, TokenResponse},
 };
 
+type OAuthClient = OriginalClient<
+  StandardErrorResponse<BasicErrorResponseType>,
+  StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
+  StandardTokenIntrospectionResponse<EmptyExtraTokenFields, BasicTokenType>,
+  StandardRevocableToken,
+  StandardErrorResponse<RevocationErrorResponseType>,
+  EndpointSet,
+  EndpointNotSet,
+  EndpointNotSet,
+  EndpointNotSet,
+  EndpointSet,
+>;
+
 pub struct OkkaOAuthProvider {
-  client: OriginalClient<
-    StandardErrorResponse<BasicErrorResponseType>,
-    StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
-    StandardTokenIntrospectionResponse<EmptyExtraTokenFields, BasicTokenType>,
-    StandardRevocableToken,
-    StandardErrorResponse<RevocationErrorResponseType>,
-    EndpointSet,
-    EndpointNotSet,
-    EndpointNotSet,
-    EndpointNotSet,
-    EndpointSet,
-  >,
+  client: OAuthClient,
   http_client: Client,
 }
 
@@ -84,7 +86,7 @@ impl OAuthProvider for OkkaOAuthProvider {
 
     Ok(TokenResponse {
       access_token: token_result.access_token().secret().clone(),
-      token_type: String::from(token_result.token_type().as_ref()),
+      token_type: token_result.token_type().as_ref().to_owned(),
       expires_in: token_result.expires_in().map(|d| d.as_secs()).unwrap_or(3600),
       refresh_token: token_result.refresh_token().map(|t| t.secret().clone()),
       scope: token_result
@@ -104,7 +106,7 @@ impl OAuthProvider for OkkaOAuthProvider {
 
     Ok(TokenResponse {
       access_token: token_result.access_token().secret().clone(),
-      token_type: String::from(token_result.token_type().as_ref()),
+      token_type: token_result.token_type().as_ref().to_owned(),
       expires_in: token_result.expires_in().map(|d| d.as_secs()).unwrap_or(3600),
       refresh_token: token_result.refresh_token().map(|t| t.secret().to_string()),
       scope: token_result
@@ -114,7 +116,7 @@ impl OAuthProvider for OkkaOAuthProvider {
     })
   }
 
-  async fn revoke_token(&self, token: String) -> Result<(), AuthError> {
+  async fn revoke_token(&self, _token: String) -> Result<(), AuthError> {
     // OAuth2 5.xではトークンの失効はオプショナルな機能です
     // プロバイダーが対応していない場合は、NotImplementedエラーを返すなどの対応が必要です
     Err(AuthError::NotImplemented("Token revocation not supported".to_string()))
@@ -131,10 +133,13 @@ impl OAuthProvider for OkkaOAuthProvider {
 
 #[cfg(test)]
 mod tests {
+  use crate::port::outbound::oauth_provider::GrantType;
+
   use super::*;
-  use mockall::predicate::*;
-  use oauth2::TokenResponse as _;
+  use serde_json::json;
   use tokio;
+  use wiremock::matchers::{method, path};
+  use wiremock::{Mock, MockServer, ResponseTemplate};
 
   const TEST_AUTH_URL: &str = "https://example.com/auth";
   const TEST_TOKEN_URL: &str = "https://example.com/token";
@@ -185,9 +190,11 @@ mod tests {
     assert!(result.is_ok());
     let (auth_url, csrf_token, pkce_verifier) = result.unwrap();
 
+    // URLエンコードされた形式でリダイレクトURLを確認
+    let encoded_redirect_url = urlencoding::encode(TEST_REDIRECT_URL);
+    assert!(auth_url.contains(&encoded_redirect_url.to_string()));
     assert!(auth_url.contains(TEST_AUTH_URL));
     assert!(auth_url.contains(TEST_CLIENT_ID));
-    assert!(auth_url.contains(TEST_REDIRECT_URL));
     assert!(auth_url.contains("scope=read+write"));
     assert!(!csrf_token.secret().is_empty());
     assert!(!pkce_verifier.secret().is_empty());
@@ -195,9 +202,25 @@ mod tests {
 
   #[tokio::test]
   async fn test_get_token() {
+    // モックサーバーのセットアップ
+    let mock_server = MockServer::start().await;
+
+    // トークンエンドポイントのモック設定
+    Mock::given(method("POST"))
+      .and(path("/"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+          "access_token": "test_access_token",
+          "token_type": "bearer",
+          "expires_in": 3600,
+          "refresh_token": "test_refresh_token",
+          "scope": "read write"
+      })))
+      .mount(&mock_server)
+      .await;
+
     let provider = OkkaOAuthProvider::new(
       TEST_AUTH_URL.to_string(),
-      TEST_TOKEN_URL.to_string(),
+      mock_server.uri(), // モックサーバーのURLを使用
       TEST_CLIENT_ID.to_string(),
       Some(TEST_CLIENT_SECRET.to_string()),
       TEST_REDIRECT_URL.to_string(),
@@ -207,22 +230,43 @@ mod tests {
     let request = TokenRequest {
       code: "test_auth_code".to_string(),
       code_verifier: "test_code_verifier".to_string(),
-      grant_type: todo!(),
-      redirect_uri: todo!(),
-      client_id: todo!(),
+      grant_type: GrantType::AuthorizationCode,
+      redirect_uri: TEST_REDIRECT_URL.to_string(),
+      client_id: TEST_CLIENT_ID.to_string(),
     };
 
-    // Note: This test will fail without proper mocking of the HTTP client
-    // In a real implementation, you would mock the HTTP client and its responses
     let result = provider.get_token(request).await;
-    assert!(result.is_err()); // Will fail due to no mock HTTP client
+    assert!(result.is_ok());
+
+    let token_response = result.unwrap();
+    assert_eq!(token_response.access_token, "test_access_token");
+    assert_eq!(token_response.token_type, "bearer");
+    assert_eq!(token_response.expires_in, 3600);
+    assert_eq!(token_response.refresh_token, Some("test_refresh_token".to_string()));
+    assert_eq!(token_response.scope, "read write");
   }
 
   #[tokio::test]
   async fn test_refresh_token() {
+    // モックサーバーのセットアップ
+    let mock_server = MockServer::start().await;
+
+    // トークンエンドポイントのモック設定
+    Mock::given(method("POST"))
+      .and(path("/"))
+      .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+          "access_token": "new_access_token",
+          "token_type": "Bearer",
+          "expires_in": 3600,
+          "refresh_token": "new_refresh_token",
+          "scope": "read write"
+      })))
+      .mount(&mock_server)
+      .await;
+
     let provider = OkkaOAuthProvider::new(
       TEST_AUTH_URL.to_string(),
-      TEST_TOKEN_URL.to_string(),
+      mock_server.uri(), // モックサーバーのURLを使用
       TEST_CLIENT_ID.to_string(),
       Some(TEST_CLIENT_SECRET.to_string()),
       TEST_REDIRECT_URL.to_string(),
@@ -231,13 +275,19 @@ mod tests {
 
     let request = RefreshTokenRequest {
       refresh_token: "test_refresh_token".to_string(),
-      grant_type: todo!(),
-      client_id: todo!(),
+      grant_type: GrantType::AuthorizationCode,
+      client_id: TEST_CLIENT_ID.to_string(),
     };
 
-    // Note: This test will fail without proper mocking of the HTTP client
     let result = provider.refresh_token(request).await;
-    assert!(result.is_err()); // Will fail due to no mock HTTP client
+    assert!(result.is_ok());
+
+    let token_response = result.unwrap();
+    assert_eq!(token_response.access_token, "new_access_token");
+    assert_eq!(token_response.token_type, "bearer");
+    assert_eq!(token_response.expires_in, 3600);
+    assert_eq!(token_response.refresh_token, Some("new_refresh_token".to_string()));
+    assert_eq!(token_response.scope, "read write");
   }
 
   #[tokio::test]
