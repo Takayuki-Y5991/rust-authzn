@@ -15,8 +15,14 @@ pub enum AuthError {
   #[error("Session expired")]
   SessionExpired,
 
+  #[error("Provider error: {0}")]
+  ProviderError(String),
+
   #[error("Configuration error: {0}")]
   ConfigurationError(String),
+
+  #[error("Not implemented: {0}")]
+  NotImplemented(String),
 
   #[error("Validation error: {0}")]
   ValidationError(String),
