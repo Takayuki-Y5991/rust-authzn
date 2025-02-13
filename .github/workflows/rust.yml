@@ -105,3 +105,17 @@ jobs:
 
       - name: Build release
         run: cargo build --release --verbose
+
+  slack_notify:
+    name: Slack Notification
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_TITLE: Rust CI
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USERNAME: konkon
