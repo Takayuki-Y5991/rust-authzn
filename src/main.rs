@@ -3,7 +3,11 @@ use axum::{
   routing::{get, post},
   Router,
 };
-use rust_authzn::config::config::Config;
+use rust_authzn::{
+  adapter::{inbound::authentication_adapter::AuthenticationAdapter, outbound::okka_adapter::OkkaOAuthProvider},
+  config::config::Config,
+  core::usecase::authentication::AuthenticationUseCase,
+};
 
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
@@ -20,9 +24,19 @@ async fn main() {
   // Load configuration
   let config = Config::from_env();
 
-  // Initialize authentication service
-  let auth_service = AuthenticationService::new();
-  let auth_adapter = AuthenticationAdapter::new(auth_service);
+  // Initialize OAuth provider
+  let oauth_provider = OkkaOAuthProvider::new(
+    config.oauth.auth_url,
+    config.oauth.token_url,
+    config.oauth.client_id,
+    Some(config.oauth.client_secret),
+    config.oauth.redirect_url,
+  )
+  .expect("Failed to initialize OAuth provider");
+
+  // Initialize authentication usecase and adapter
+  let auth_usecase = AuthenticationUseCase::new(oauth_provider);
+  let auth_adapter = AuthenticationAdapter::new(auth_usecase);
 
   // Build router with routes
   let app = Router::new()
