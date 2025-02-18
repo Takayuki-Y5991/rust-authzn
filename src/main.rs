@@ -1,16 +1,10 @@
-use axum::{
-  extract::State,
-  routing::{get, post},
-  Router,
-};
 use rust_authzn::{
   adapter::{inbound::authentication_adapter::AuthenticationAdapter, outbound::okka_adapter::OkkaOAuthProvider},
-  config::config::Config,
+  config::{config::Config, route::create_router},
   core::usecase::authentication::AuthenticationUseCase,
 };
 
 use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -39,15 +33,7 @@ async fn main() {
   let auth_adapter = AuthenticationAdapter::new(auth_usecase);
 
   // Build router with routes
-  let app = Router::new()
-    .route("/auth/redirect", post(auth_adapter.redirect_url))
-    .route("/auth/callback", post(auth_adapter.callback))
-    .route("/auth/verify", post(auth_adapter.verify_token))
-    .route("/auth/refresh", post(auth_adapter.refresh_token))
-    .route("/auth/userinfo", get(auth_adapter.get_user_info))
-    .route("/auth/logout", post(auth_adapter.logout))
-    .layer(TraceLayer::new_for_http())
-    .with_state(auth_adapter);
+  let app = create_router(auth_adapter);
 
   // Get the address to bind to
   let addr = SocketAddr::from(([0, 0, 0, 0], config.server.port));

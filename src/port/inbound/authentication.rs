@@ -1,5 +1,6 @@
 use crate::core::domain::auth::error::AuthError;
 use async_trait::async_trait;
+use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct RedirectUrlRequest {
@@ -10,7 +11,7 @@ pub struct RedirectUrlRequest {
 
 #[derive(Debug)]
 pub struct RedirectUrlResponse {
-  pub redirect_url: String,
+  pub redirect_uri: String,
   pub state: String,
 }
 
@@ -31,7 +32,7 @@ pub struct TokenResponse {
   pub issuer: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub enum AuthAction {
   Register,
   Login,
@@ -45,22 +46,22 @@ pub enum CodeChallengeMethod {
 #[async_trait]
 pub trait AuthenticationPort {
   /// Generate redirect URL for authentication
-  async fn generate_redirect_url(&self, request: RedirectUrlRequest) -> Result<RedirectUrlResponse, AuthError>;
+  async fn generate_redirect_uri(&self, request: RedirectUrlRequest) -> Result<RedirectUrlResponse, AuthError>;
 
-  /// Handle OAuth callback
-  async fn handle_callback(&self, request: CallbackRequest) -> Result<TokenResponse, AuthError>;
+  // /// Handle OAuth callback
+  // async fn handle_callback(&self, request: CallbackRequest) -> Result<TokenResponse, AuthError>;
 
-  /// Verify access token
-  async fn verify_token(&self, token: String) -> Result<TokenVerificationResponse, AuthError>;
+  // /// Verify access token
+  // async fn verify_token(&self, token: String) -> Result<TokenVerificationResponse, AuthError>;
 
-  /// Refresh access token
-  async fn refresh_token(&self, refresh_token: String) -> Result<TokenResponse, AuthError>;
+  // /// Refresh access token
+  // async fn refresh_token(&self, refresh_token: String) -> Result<TokenResponse, AuthError>;
 
-  /// Get user information
-  async fn get_user_info(&self, access_token: String) -> Result<UserInfo, AuthError>;
+  // /// Get user information
+  // async fn get_user_info(&self, access_token: String) -> Result<UserInfo, AuthError>;
 
-  /// Logout user
-  async fn logout(&self, access_token: String) -> Result<(), AuthError>;
+  // /// Logout user
+  // async fn logout(&self, access_token: String) -> Result<(), AuthError>;
 }
 
 #[derive(Debug)]

@@ -58,7 +58,7 @@ components:
             $ref: '#/components/schemas/Error'
 
 paths:
-  /auth/redirect-url:
+  /auth/redirect-uri:
     post:
       summary: リダイレクトURL発行
       description: ユーザー登録またはログインのためのリダイレクトURLを発行する。
@@ -75,9 +75,9 @@ paths:
                 code_challenge:
                   type: string
                   description: PKCE code challenge
-                code_challenge_method:
+                redirect_uri:
                   type: string
-                  enum: [S256]
+                  description: リダイレクト先URL
       responses:
         '200':
           description: リダイレクトURL
@@ -86,7 +86,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  redirect_url:
+                  redirect_uri:
                     type: string
                   state:
                     type: string

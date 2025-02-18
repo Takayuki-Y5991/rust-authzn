@@ -26,6 +26,7 @@ type OAuthClient = OriginalClient<
   EndpointSet,
 >;
 
+#[derive(Clone)]
 pub struct OkkaOAuthProvider {
   client: OAuthClient,
   http_client: Client,
@@ -57,7 +58,11 @@ impl OkkaOAuthProvider {
 
     Ok(Self { client, http_client })
   }
-  pub fn generate_auth_url(&self, scopes: Vec<String>) -> Result<(String, CsrfToken, PkceCodeVerifier), AuthError> {
+}
+
+#[async_trait]
+impl OAuthProvider for OkkaOAuthProvider {
+  fn generate_auth_url(&self, scopes: Vec<String>) -> Result<(String, CsrfToken, PkceCodeVerifier), AuthError> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let mut auth_url_builder = self.client.authorize_url(CsrfToken::new_random);
@@ -71,10 +76,6 @@ impl OkkaOAuthProvider {
 
     Ok((auth_url.to_string(), csrf_token, pkce_verifier))
   }
-}
-
-#[async_trait]
-impl OAuthProvider for OkkaOAuthProvider {
   async fn get_token(&self, request: TokenRequest) -> Result<TokenResponse, AuthError> {
     let token_result = self
       .client
