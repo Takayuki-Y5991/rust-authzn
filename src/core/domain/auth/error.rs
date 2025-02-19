@@ -1,4 +1,4 @@
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum AuthError {
   #[error("Invalid credentials")]
   InvalidCredentials,
@@ -26,4 +26,7 @@ pub enum AuthError {
 
   #[error("Validation error: {0}")]
   ValidationError(String),
+
+  #[error("Unexpected error: {0}")]
+  UnexpectedError(String),
 }
