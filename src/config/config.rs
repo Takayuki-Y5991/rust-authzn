@@ -4,6 +4,7 @@ use std::env;
 pub struct Config {
   pub server: ServerConfig,
   pub oauth: OAuthConfig,
+  pub redis: RedisConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -20,6 +21,12 @@ pub struct OAuthConfig {
   pub token_url: String,
   pub redirect_url: String,
   pub userinfo_url: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct RedisConfig {
+  pub url: String,
+  pub prefix: String,
 }
 
 impl Config {
@@ -43,6 +50,11 @@ impl Config {
       userinfo_url: env::var("OAUTH_USERINFO_URL").expect("OAUTH_USERINFO_URL must be set"),
     };
 
-    Config { server, oauth }
+    let redis = RedisConfig {
+      url: env::var("REDIS_URL").expect("REDIS_URL must be set"),
+      prefix: env::var("REDIS_PREFIX").expect("REDIS_PREFIX must be set"),
+    };
+
+    Config { server, oauth, redis }
   }
 }

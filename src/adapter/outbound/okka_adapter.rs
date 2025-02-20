@@ -34,19 +34,21 @@ pub struct OkkaOAuthProvider {
 
 impl OkkaOAuthProvider {
   pub fn new(
-    auth_url: String,
-    token_url: String,
-    client_id: String,
-    client_secret: Option<String>,
-    redirect_url: String,
+    auth_url: &str,
+    token_url: &str,
+    client_id: &str,
+    client_secret: Option<&str>,
+    redirect_url: &str,
   ) -> Result<Self, AuthError> {
-    let client = BasicClient::new(ClientId::new(client_id))
-      .set_redirect_uri(RedirectUrl::new(redirect_url).map_err(|e| AuthError::ConfigurationError(e.to_string()))?)
-      .set_auth_uri(AuthUrl::new(auth_url).map_err(|e| AuthError::ConfigurationError(e.to_string()))?)
-      .set_token_uri(TokenUrl::new(token_url).map_err(|e| AuthError::ConfigurationError(e.to_string()))?);
+    let client = BasicClient::new(ClientId::new(client_id.to_string()))
+      .set_redirect_uri(
+        RedirectUrl::new(redirect_url.to_string()).map_err(|e| AuthError::ConfigurationError(e.to_string()))?,
+      )
+      .set_auth_uri(AuthUrl::new(auth_url.to_string()).map_err(|e| AuthError::ConfigurationError(e.to_string()))?)
+      .set_token_uri(TokenUrl::new(token_url.to_string()).map_err(|e| AuthError::ConfigurationError(e.to_string()))?);
 
     let client = if let Some(secret) = client_secret {
-      client.set_client_secret(ClientSecret::new(secret))
+      client.set_client_secret(ClientSecret::new(secret.to_string()))
     } else {
       client
     };

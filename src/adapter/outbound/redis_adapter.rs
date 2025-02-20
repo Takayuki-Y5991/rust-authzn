@@ -6,6 +6,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::port::outbound::cache_provider::CacheProvider;
 
+#[derive(Clone)]
 pub struct RedisCacheAdapter {
   client: Arc<Client>,
   prefix: String,

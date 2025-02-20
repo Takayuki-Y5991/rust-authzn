@@ -1,5 +1,8 @@
 use rust_authzn::{
-  adapter::{inbound::authentication_adapter::AuthenticationAdapter, outbound::okka_adapter::OkkaOAuthProvider},
+  adapter::{
+    inbound::authentication_adapter::AuthenticationAdapter,
+    outbound::{okka_adapter::OkkaOAuthProvider, redis_adapter::RedisCacheAdapter},
+  },
   config::{config::Config, route::create_router},
   core::usecase::authentication::AuthenticationUseCase,
 };
@@ -20,16 +23,19 @@ async fn main() {
 
   // Initialize OAuth provider
   let oauth_provider = OkkaOAuthProvider::new(
-    config.oauth.auth_url,
-    config.oauth.token_url,
-    config.oauth.client_id,
-    Some(config.oauth.client_secret),
-    config.oauth.redirect_url,
+    &config.oauth.auth_url,
+    &config.oauth.token_url,
+    &config.oauth.client_id,
+    Some(&config.oauth.client_secret),
+    &config.oauth.redirect_url,
   )
   .expect("Failed to initialize OAuth provider");
 
+  let redis_cache =
+    RedisCacheAdapter::new(&config.redis.url, &config.redis.prefix).expect("Failed to initialize Redis cache");
+
   // Initialize authentication usecase and adapter
-  let auth_usecase = AuthenticationUseCase::new(oauth_provider);
+  let auth_usecase = AuthenticationUseCase::new(oauth_provider, redis_cache);
   let auth_adapter = AuthenticationAdapter::new(auth_usecase);
 
   // Build router with routes

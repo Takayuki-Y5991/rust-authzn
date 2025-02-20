@@ -104,7 +104,7 @@ pub struct RedirectUrlApiRequest {
   pub redirect_uri: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RedirectUrlApiResponse {
   pub redirect_uri: String,
   pub state: String,
