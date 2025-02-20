@@ -1,0 +1,243 @@
+openapi: 3.0.0
+info:
+  title: Rust Auth Server API
+  version: 1.0.0
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error_code:
+          type: string
+        message:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          enum: [bearer]
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+        issued_at:
+          type: string
+          format: date-time
+        issuer:
+          type: string
+          description: Token issuer identifier
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /auth/redirect-uri:
+    post:
+      summary: リダイレクトURL発行
+      description: ユーザー登録またはログインのためのリダイレクトURLを発行する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [register, login]
+                code_challenge:
+                  type: string
+                  description: PKCE code challenge
+                redirect_uri:
+                  type: string
+                  description: リダイレクト先URL
+      responses:
+        '200':
+          description: リダイレクトURL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redirect_uri:
+                    type: string
+                  state:
+                    type: string
+                    description: CSRF防止用のstate parameter
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/callback:
+    get:
+      summary: リダイレクト結果処理
+      description: OAuthプロバイダーからのリダイレクトを受け取り、結果を処理する。
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+          description: OAuthプロバイダーからの認証コード
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+          description: CSRF防止用のstate parameter
+        - in: query
+          name: code_verifier
+          required: true
+          schema:
+            type: string
+          description: PKCE code verifier
+      responses:
+        '200':
+          description: ログイン結果（アクセストークン）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /verify-token:
+    post:
+      security:
+        - bearerAuth: []
+      summary: トークン検証
+      description: アクセストークンを検証する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: トークン検証結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  expires_in:
+                    type: integer
+                    description: Remaining validity time in seconds
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /refresh-token:
+    post:
+      summary: トークンリフレッシュ
+      description: リフレッシュトークンを使用して新しいアクセストークンを発行する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: 新しいアクセストークン
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /user-info:
+    get:
+      security:
+        - bearerAuth: []
+      summary: ユーザー情報取得
+      description: アクセストークンを使用してユーザー情報を取得する。
+      responses:
+        '200':
+          description: ユーザー情報
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                  email:
+                    type: string
+                  name:
+                    type: string
+                  email_verified:
+                    type: boolean
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /logout:
+    post:
+      security:
+        - bearerAuth: []
+      summary: ログアウト
+      description: ユーザーのセッションを終了し、OAuthプロバイダーでログアウト処理を行う。
+      responses:
+        '200':
+          description: ログアウト成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'

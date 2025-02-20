@@ -1,5 +1,6 @@
 use crate::core::domain::auth::error::AuthError;
 use async_trait::async_trait;
+use oauth2::{CsrfToken, PkceCodeVerifier};
 
 #[derive(Debug, Clone)]
 pub enum GrantType {
@@ -43,6 +44,8 @@ pub struct TokenResponse {
 
 #[async_trait]
 pub trait OAuthProvider {
+  fn generate_auth_url(&self, scopes: Vec<String>) -> Result<(String, CsrfToken, PkceCodeVerifier), AuthError>;
+
   async fn get_token(&self, request: TokenRequest) -> Result<TokenResponse, AuthError>;
 
   async fn refresh_token(&self, request: RefreshTokenRequest) -> Result<TokenResponse, AuthError>;
