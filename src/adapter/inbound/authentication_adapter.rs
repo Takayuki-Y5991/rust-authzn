@@ -1,20 +1,12 @@
-use async_trait::async_trait;
 use axum::{
-  extract::State,
-  http::{header, HeaderValue, StatusCode},
-  response::{IntoResponse, Response},
+  http::{header, HeaderValue},
+  response::IntoResponse,
   Json,
 };
 use cookie::{time, Cookie, SameSite};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-  core::domain::auth::error::AuthError,
-  port::inbound::authentication::{
-    AuthAction, AuthenticationPort, CallbackRequest, CodeChallengeMethod, RedirectUrlRequest, RedirectUrlResponse,
-    TokenResponse, TokenVerificationResponse, UserInfo,
-  },
-};
+use crate::port::inbound::authentication::{AuthAction, AuthenticationPort, CodeChallengeMethod, RedirectUrlRequest};
 
 use super::response_type::AppError;
 

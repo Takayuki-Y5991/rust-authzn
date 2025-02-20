@@ -1,14 +1,8 @@
 use crate::{
   core::domain::auth::{constants::AuthorizationConstants, error::AuthError},
   port::{
-    inbound::authentication::{
-      AuthenticationPort, CallbackRequest, RedirectUrlRequest, RedirectUrlResponse, TokenResponse,
-      TokenVerificationResponse, UserInfo,
-    },
-    outbound::{
-      cache_provider::{self, CacheProvider},
-      oauth_provider::{GrantType, OAuthProvider, RefreshTokenRequest, TokenRequest},
-    },
+    inbound::authentication::{AuthenticationPort, RedirectUrlRequest, RedirectUrlResponse},
+    outbound::{cache_provider::CacheProvider, oauth_provider::OAuthProvider},
   },
 };
 use async_trait::async_trait;
@@ -58,7 +52,7 @@ impl<T: OAuthProvider + Clone + Send + Sync, C: CacheProvider + Clone + Send + S
       expires_at: now_secs + AuthorizationConstants::PKCE_SESSION_TTL_SECONDS,
     };
 
-    let key = AuthorizationConstants::pkce_session_key(&state.secret());
+    let key = AuthorizationConstants::pkce_session_key(state.secret());
 
     self
       .cache_provider
@@ -147,7 +141,7 @@ impl<T: OAuthProvider + Clone + Send + Sync, C: CacheProvider + Clone + Send + S
 mod tests {
   use super::*;
   use crate::core::usecase::utils::time_utils::test_utils::{reset_mock_time, set_mock_time};
-  use crate::port::outbound::oauth_provider::TokenResponse as OAuthTokenResponse;
+  use crate::port::outbound::oauth_provider::{RefreshTokenRequest, TokenRequest, TokenResponse as OAuthTokenResponse};
   use crate::port::{
     inbound::authentication::{AuthAction, CodeChallengeMethod},
     outbound::oauth_provider::ProviderConfig,

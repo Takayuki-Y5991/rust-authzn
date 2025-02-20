@@ -3,7 +3,7 @@ use rust_authzn::{
     inbound::authentication_adapter::AuthenticationAdapter,
     outbound::{okka_adapter::OkkaOAuthProvider, redis_adapter::RedisCacheAdapter},
   },
-  config::{config::Config, route::create_router},
+  config::{envs::Config, route::create_router},
   core::usecase::authentication::AuthenticationUseCase,
 };
 
