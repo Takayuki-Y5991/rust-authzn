@@ -31,7 +31,7 @@ pub struct RedisConfig {
 
 impl Config {
   pub fn from_env() -> Self {
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     let server = ServerConfig {
       host: env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
