@@ -13,7 +13,7 @@ use tokio::time::timeout;
 const REDIS_PORT: u16 = 6379;
 const OAUTH_PORT: u16 = 8080;
 const REDIS_TIMEOUT: u64 = 60;
-const OAUTH_TIMEOUT: u64 = 240; // Extended further to 4 minutes
+const OAUTH_TIMEOUT: u64 = 240;
 const VERIFICATION_TIMEOUT: u64 = 15;
 
 pub struct TestContainers {
