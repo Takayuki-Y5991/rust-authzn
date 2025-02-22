@@ -21,6 +21,7 @@ pub struct OAuthConfig {
   pub token_url: String,
   pub redirect_url: String,
   pub userinfo_url: String,
+  pub issuer: String,
 }
 
 #[derive(Clone, Debug)]
@@ -48,6 +49,7 @@ impl Config {
       token_url: env::var("OAUTH_TOKEN_URL").expect("OAUTH_TOKEN_URL must be set"),
       redirect_url: env::var("OAUTH_REDIRECT_URL").expect("OAUTH_REDIRECT_URL must be set"),
       userinfo_url: env::var("OAUTH_USERINFO_URL").expect("OAUTH_USERINFO_URL must be set"),
+      issuer: env::var("OAUTH_ISSUER").expect("OAUTH_ISSUER must be set"),
     };
 
     let redis = RedisConfig {
