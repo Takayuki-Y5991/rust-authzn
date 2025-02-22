@@ -258,6 +258,7 @@ async fn create_oauth_provider_with_retry(oauth_url: &str) -> Result<OkkaOAuthPr
       "test-client-id",
       Some("test-client-secret"),
       "http://localhost:3000/callback",
+      "test-issuer",
     ) {
       Ok(provider) => {
         println!("OAuth provider created successfully on attempt {}", attempt);

@@ -1,16 +1,34 @@
 use crate::{
   core::domain::auth::{constants::AuthorizationConstants, error::AuthError},
   port::{
-    inbound::authentication::{AuthenticationPort, RedirectUrlRequest, RedirectUrlResponse},
-    outbound::{cache_provider::CacheProvider, oauth_provider::OAuthProvider},
+    inbound::authentication::{
+      AuthenticationPort, CallbackRequest, RedirectUrlRequest, RedirectUrlResponse, TokenResponse,
+    },
+    outbound::{
+      cache_provider::CacheProvider,
+      oauth_provider::{GrantType, OAuthProvider, TokenRequest},
+    },
   },
 };
 use async_trait::async_trait;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::utils::time_utils::now_time_secs;
 
-#[derive(Serialize)]
+impl From<Box<dyn std::error::Error>> for AuthError {
+  fn from(error: Box<dyn std::error::Error>) -> Self {
+    AuthError::ProviderError(error.to_string())
+  }
+}
+
+impl From<Box<dyn std::error::Error + Send + Sync>> for AuthError {
+  fn from(error: Box<dyn std::error::Error + Send + Sync>) -> Self {
+    AuthError::ProviderError(error.to_string())
+  }
+}
+
+#[derive(Serialize, Deserialize)]
 struct PkceSession {
   code_verifier: String,
   expires_at: u64,
@@ -66,28 +84,42 @@ impl<T: OAuthProvider + Clone + Send + Sync, C: CacheProvider + Clone + Send + S
     })
   }
 
-  // async fn handle_callback(&self, request: CallbackRequest) -> Result<TokenResponse, AuthError> {
-  //   let provider_config = self.oauth_provider.get_provider_config().await?;
+  async fn handle_callback(&self, request: CallbackRequest) -> Result<TokenResponse, AuthError> {
+    // 1. Retrieve the PKCE session from the cache
+    let session_key = AuthorizationConstants::pkce_session_key(&request.state);
+    let pkce_session: PkceSession = self.cache_provider.get(&session_key).await?.ok_or(AuthError::InvalidState)?;
 
-  //   let token_request = TokenRequest {
-  //     code: request.code,
-  //     code_verifier: request.code_verifier,
-  //     grant_type: GrantType::AuthorizationCode,
-  //     redirect_uri: provider_config.authorization_endpoint,
-  //     client_id: "".to_string(), // This should come from configuration
-  //   };
+    // 2. verify the session expiration
+    let now = now_time_secs().map_err(|err| AuthError::UnexpectedError(err.to_string()))?;
+    if now > pkce_session.expires_at {
+      return Err(AuthError::SessionExpired);
+    }
 
-  //   let token_response = self.oauth_provider.get_token(token_request).await?;
+    // 3. Delete the PKCE session from the cache
+    let _ = self.cache_provider.remove(&session_key).await;
 
-  //   Ok(TokenResponse {
-  //     access_token: token_response.access_token,
-  //     refresh_token: token_response.refresh_token,
-  //     token_type: token_response.token_type,
-  //     expires_in: token_response.expires_in,
-  //     issued_at: chrono::Utc::now().to_rfc3339(),
-  //     issuer: provider_config.token_endpoint,
-  //   })
-  // }
+    // 3. fetch provider config
+    let provider_config = self.oauth_provider.get_provider_config().await?;
+
+    let token_request = TokenRequest {
+      code: request.code,
+      grant_type: GrantType::AuthorizationCode,
+      client_id: provider_config.client_id,
+      redirect_uri: provider_config.redirect_uri,
+      code_verifier: pkce_session.code_verifier,
+    };
+
+    let token_response = self.oauth_provider.get_token(token_request).await?;
+
+    Ok(TokenResponse {
+      access_token: token_response.access_token,
+      refresh_token: token_response.refresh_token,
+      token_type: token_response.token_type,
+      expires_in: token_response.expires_in,
+      issued_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs().to_string(),
+      issuer: provider_config.issuer,
+    })
+  }
 
   // async fn verify_token(&self, token: String) -> Result<TokenVerificationResponse, AuthError> {
   //   // In a real implementation, this would verify the token with the OAuth provider

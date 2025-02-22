@@ -49,7 +49,7 @@ pub trait AuthenticationPort {
   async fn generate_redirect_uri(&self, request: RedirectUrlRequest) -> Result<RedirectUrlResponse, AuthError>;
 
   // /// Handle OAuth callback
-  // async fn handle_callback(&self, request: CallbackRequest) -> Result<TokenResponse, AuthError>;
+  async fn handle_callback(&self, request: CallbackRequest) -> Result<TokenResponse, AuthError>;
 
   // /// Verify access token
   // async fn verify_token(&self, token: String) -> Result<TokenVerificationResponse, AuthError>;

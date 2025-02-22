@@ -60,4 +60,7 @@ pub struct ProviderConfig {
   pub authorization_endpoint: String,
   pub token_endpoint: String,
   pub revocation_endpoint: Option<String>,
+  pub client_id: String,
+  pub redirect_uri: String,
+  pub issuer: String,
 }

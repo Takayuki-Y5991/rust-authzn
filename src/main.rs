@@ -28,6 +28,7 @@ async fn main() {
     &config.oauth.client_id,
     Some(&config.oauth.client_secret),
     &config.oauth.redirect_url,
+    &config.oauth.issuer,
   )
   .expect("Failed to initialize OAuth provider");
 

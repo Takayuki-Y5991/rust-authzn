@@ -30,6 +30,7 @@ type OAuthClient = OriginalClient<
 pub struct OkkaOAuthProvider {
   client: OAuthClient,
   http_client: Client,
+  issuer: String,
 }
 
 impl OkkaOAuthProvider {
@@ -39,6 +40,7 @@ impl OkkaOAuthProvider {
     client_id: &str,
     client_secret: Option<&str>,
     redirect_url: &str,
+    issuer: &str,
   ) -> Result<Self, AuthError> {
     let client = BasicClient::new(ClientId::new(client_id.to_string()))
       .set_redirect_uri(
@@ -58,7 +60,11 @@ impl OkkaOAuthProvider {
       .build()
       .map_err(|e| AuthError::ConfigurationError(e.to_string()))?;
 
-    Ok(Self { client, http_client })
+    Ok(Self {
+      client,
+      http_client,
+      issuer: issuer.to_string(),
+    })
   }
 }
 
@@ -130,6 +136,9 @@ impl OAuthProvider for OkkaOAuthProvider {
       authorization_endpoint: self.client.auth_uri().as_str().to_string(),
       token_endpoint: self.client.token_uri().as_str().to_string(),
       revocation_endpoint: None,
+      client_id: self.client.client_id().to_string(),
+      redirect_uri: self.client.redirect_uri().map(|r| r.as_str().to_string()).unwrap_or_default(),
+      issuer: self.issuer.clone(),
     })
   }
 }
