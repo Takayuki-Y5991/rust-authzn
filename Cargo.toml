@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 tokio = {version =  "1.43.0", features = ["rt" ,"net", "macros", "rt-multi-thread"] }
-async-trait = "0.1.87"
+async-trait = "0.1.88"
 oauth2 = "5"
 axum = "0.8"
 tower = "0.5"
